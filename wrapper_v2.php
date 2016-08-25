@@ -7,27 +7,28 @@
  *
  *  @version 2.0
 */
+
+#if(!defined('IN_INDEX')) { die('Sorry, you cannot access this file.'); }
+
 class DB
 {
-    protected static $host    = "localhost";
-    protected static $dbname  = "mydatabase";
-    protected static $user    = "root";
-    protected static $pass    = "mypass123";
-    protected static $charset = "utf8";
+    private static $host    = "localhost";
+    private static $dbname  = "mydatabase";
+    private static $user    = "root";
+    private static $pass    = "test123";
+    private static $charset = "utf8";
+
 
     private static $dsn = "mysql:host=%s;dbname=%s;charset=%s";    // Dont touch it you twat
     private static $pdo, $statement;
-    
-
     /**
-     * getConnection - Trying to reconnect to database if the current connection is empty.
+     * __construct - Trying to reconnect to database if the current connection is empty.
      * 
      * @access public
-     * @static
      *
      * @return mixed Value.
      */
-    public static function getConnection()
+    public function __construct()
     {
         if(is_null(self::$pdo))
         {
@@ -37,9 +38,7 @@ class DB
                     PDO::ATTR_EMULATE_PREPARES => false,
                     PDO::ATTR_ERRMODE          => PDO::ERRMODE_EXCEPTION
                 ];
-
-                $dsn = sprintf(self::$dsn, self::$host, self::$dbname, self::$charset);
-
+                $dsn       = sprintf(self::$dsn, self::$host, self::$dbname, self::$charset);
                 self::$pdo = new PDO($dsn, self::$user, self::$pass, $attributes);
             }
             catch (PDOException $e)
@@ -47,55 +46,45 @@ class DB
                 exit($e->getMessage());
             }
         }
-        else
-            return new self;
     }
-
     /**
      * prepare - Trying to prepare the query and store it inside the $statement variable.
      * 
-     * @param string $query Contains the sql query.
+     * @param string $sql Contains the sql query.
      *
      * @access public
      * @static
      *
      * @return obj
      */
-    public static function prepare($query)
+    public static function prepare($sql)
     {
-        DB::getConnection();
-
         try
         {
-            self::$statement = self::$pdo->prepare($query);
+            self::$statement = self::$pdo->prepare($sql);
         }
         catch(PDOException $e)
         {
             exit("Preparing query error: {$e->getMessage()}");
         }
-
         return new self;
     }
-
     /*
     # USELESS!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     public static function bindValue($name, $value, $type = PDO::PARAM_STR)
     {
-        DB::getConnection();
         self::$statement->bindValue($name, $value, $type);
         return new self;
     }
     
     public static function bindValues(array $binds)
     {
-        DB::getConnection();
         foreach($binds as $valuesArray) {
             self::$bindValue($valuesArray[0], $valuesArray[1], (isset($valuesArray[2]) ? $valuesArray[2] : PDO::PARAM_STR));
         }
         return new self;
     }
     */
-
     /**
      * execute - Trying to run/execute the prepared sql query.
      * 
@@ -106,25 +95,28 @@ class DB
      *
      * @return obj
      */
-    public static function execute($data = array())
+    public static function execute($params = array())
     {
-        DB::getConnection();
-        
         try
         {
-            if(!is_array($data) && !empty($data)) // IM NEW =D
-                $data = [$data]; // IM NEW =D
+        	$data = null;
+        	
+        	if(!empty($params))
+        	{
+	            if(!is_array($data))
+	                $data = [$data];
+	            else if(is_int($data))
+	            	$data = ["{$data}"];
+        	}
 
-            self::$statement->execute( isset($data) ? $data : null );
+            self::$statement->execute($data);
         }
         catch (PDOException $e)
         {
-            exit("Executing query error: {$e->getMessage()}");
+            exit("Executing statement error: {$e->getMessage()}");
         }
-
         return new self;
     }
-
     /**
      * fetch - Trying to fetch a single/?/ record from the stored $statement variable.
      * 
@@ -137,12 +129,9 @@ class DB
      */
     public static function fetch($type = PDO::FETCH_ASSOC)
     {
-        DB::getConnection();
-
         return self::$statement == true ? self::$statement->fetch($type) : false;
     }
     
-
     /**
      * fetchAll - Trying to fetch multiple/?/ records from the stored $statement variable.
      * 
@@ -155,13 +144,10 @@ class DB
      */
     public static function fetchAll($type = PDO::FETCH_ASSOC) 
     {
-        DB::getConnection();
-
         return self::$statement == true ? self::$statement->fetchAll($type) : false;
     }
-
     /**
-     * query - fuckyou cuz you shouldn't use this!
+     * query - NO! You shouldn't use this!
      * 
      * @param mixed $query Gtfo.
      *
@@ -169,11 +155,10 @@ class DB
      * @static
      *
      * @return 0 fucks about your life.
+     * You're literally a noob if you use this, and i'm a bigger one for letting this method exist.
      */
     public static function query($query)
     {
-        DB::getConnection();
-
         try
         {
             self::$statement = self::$pdo->query($query);
@@ -182,52 +167,61 @@ class DB
         {
             exit("Raw QUERY error: {$e->getMessage()}");
         }
-
         return new self;
     }
-
     /**
-     * lastInsertId - Trying receive the number of rows affected by the last SQL statement from our $statement variable.
+     * rowCount - Trying to receive the number of rows affected by the last SQL statement from our $statement variable.
      * 
      * @access public
      * @static
      *
      * @return int
      */
-    public static function lastInsertId()
+    public static function rowCount()
     {
-        DB::getConnection();
-
-        return self::$pdo->lastInsertId();
+        return self::$statement == true ? self::$statement->rowCount() : false;
     }
-
     /**
-     * rowCount - Trying to receive 
+     * lastInsertId - Trying to receive the ID of the last inserted row
      * 
      * @access public
      * @static
      *
      * @return mixed Value.
      */
-    public static function rowCount()
+    public static function lastInsertId()
     {
-        DB::getConnection();
-
-        return self::$statement == true ? self::$statement->rowCount() : false;
+        return self::$pdo->lastInsertId();
     }
 }
 
 /*
-# PHP PDO Cheat Sheet
 
-$users = DB::prepare("SELECT * FROM `users` WHERE `motto` = ?")
-         ->execute( "Im new here" )
-         ->fetchAll();
 
-if($users->rowCount() > 0)
-{
-    // users existing...
-}
+// Usage examples, initialize the database class
+# $db = new DB();
 
-# on progress.. more to come
+// Example 1
+# $testData = DB::prepare("SELECT * FROM `users` LIMIT 250")->execute(); // this way you dont need to use: global $db; inside your method :)
+# $testData->fetchAll();
+
+// Example 2
+# $testData = $db::prepare("SELECT * FROM `users` LIMIT 250")->execute();
+# $testData->fetchAll();
+
+// Example 3
+# $testData = $db->prepare("SELECT * FROM `users` LIMIT 250")->execute();
+# $testData->fetchAll();
+
+// Random.. ._.
+# $testData = DB::prepare("SELECT * FROM `users` WHERE `username` = ?")
+			->execute( intval($_GET['id']) )
+			->fetch();
+
+
+// echo "<pre>";
+// print_r($testData);
+// echo "</pre>";
+
+
 */
